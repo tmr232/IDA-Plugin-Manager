@@ -10,6 +10,8 @@ Usage:
 '''
 from ida_settings import IDASettings
 import docopt
+import shutil
+import os
 
 
 def main():
@@ -53,12 +55,18 @@ def main():
             print name, path
 
     if arguments['initialize']:
+        # Copy `plugin_loader.py` to IDA's plugin directory.
         ida_path = arguments['<ida-path>']
-        # Copy `plugin_loader.py` to IDA directory.
+        target_path = os.path.join(ida_path, 'plugins', 'plugin_loader.py')
+        source_path = os.path.join(os.path.dirname(__file__), 'plugin_loader.py')
+        print 'Installing the plugin loader to {}'.format(target_path)
+        shutil.copyfile(source_path, target_path)
 
     if arguments['terminate']:
-        # Remove `plugin_loader.py` from IDA directory.
-        pass
+        # Remove `plugin_loader.py` from the IDA plugins directory.
+        ida_path = arguments['<ida-path>']
+        target_path = os.path.join(ida_path, 'plugins', 'plugin_loader.py')
+        os.unlink(target_path)
 
 
 if __name__ == '__main__':
