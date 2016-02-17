@@ -22,7 +22,7 @@ class PluginLoaderEx(idaapi.plugin_t):
 
         for name, path in settings.iteritems():
             message('Loading {} from {}'.format(name, path))
-            idaapi.load_plugin(plugin)
+            idaapi.load_plugin(path)
 
         return idaapi.PLUGIN_SKIP
 
