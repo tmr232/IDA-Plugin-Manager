@@ -4,6 +4,7 @@ setup(
     name='ipm',
     version='0.1',
     packages=['ipm'],
+    install_requires=['ida-settings', 'ida-netnode'],
     url='https://github.com/tmr232/IDA-Plugin-Manager',
     license='MIT',
     author='Tamir Bahar',
