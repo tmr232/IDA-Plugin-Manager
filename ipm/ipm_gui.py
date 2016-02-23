@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 import idaapi
 from ida_settings import IDASettings
 import idc
@@ -5,27 +7,67 @@ from cute import QtWidgets, QtGui, QtCore
 
 import plugin_form
 
+PluginInfo = namedtuple('PluginInfo', 'name path system user directory idb')
+
+
+def checked(state):
+    if state:
+        return QtCore.Qt.Checked
+    return QtCore.Qt.Unchecked
+
+
 class MyDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
-    def __init__(self):
+    def __init__(self, plugin_info):
         super(MyDialog, self).__init__()
         self.setupUi(self)
 
-a = MyDialog()
+        self.plugin_info = plugin_info
+
+        self.nameLineEdit.setText(plugin_info.name)
+        self.pathLineEdit.setText(plugin_info.path)
+        self.systemCheckBox.setCheckState(checked(plugin_info.system))
+        self.userCheckBox.setCheckState(checked(plugin_info.user))
+        self.directoryCheckBox.setCheckState(checked(plugin_info.directory))
+        self.idbCheckBox.setCheckState(checked(plugin_info.idb))
+
+    def accept(self, *args, **kwargs):
+        self.plugin_info = PluginInfo(self.nameLineEdit.text(),
+                                      self.pathLineEdit.text(),
+                                      self.systemCheckBox.isChecked(),
+                                      self.userCheckBox.isChecked(),
+                                      self.directoryCheckBox.isChecked(),
+                                      self.idbCheckBox.isChecked())
+        print 'a'
+        write_plugin(self.plugin_info, IDASettings('PluginLoader'))
+        print 'b'
+        super(MyDialog, self).accept(*args, **kwargs)
+
+
+a = MyDialog(PluginInfo('name', 'path', True, True, True, True))
+a.setModal(True)
 a.show()
 
 
-class MyChoose2(idaapi.Choose2):
+def write_plugin(plugin_info, settings):
+    for storage_type in ('system', 'user', 'directory', 'idb'):
+        if getattr(plugin_info, storage_type):
+            try:
+                getattr(settings, storage_type)[plugin_info.name] = plugin_info.path
+            except:
+                pass
 
-    def __init__(self, title, nb = 5, flags=0, width=None, height=None, embedded=False, modal=False):
+
+class MyChoose2(idaapi.Choose2):
+    def __init__(self, title, nb=5, flags=0, width=None, height=None, embedded=False, modal=False):
         self.settings = IDASettings('PluginLoader')
         idaapi.Choose2.__init__(
             self,
             title,
-            [ ['Name', 10], ['Path', 50], ['I', 2], ['D', 2], ['U', 2], ['S', 2]],
-            flags = flags,
-            width = width,
-            height = height,
-            embedded = embedded)
+            [['Name', 10], ['Path', 50], ['I', 2], ['D', 2], ['U', 2], ['S', 2]],
+            flags=flags,
+            width=width,
+            height=height,
+            embedded=embedded)
         self.n = 0
         self.items = [[name,
                        path,
@@ -102,6 +144,7 @@ class MyChoose2(idaapi.Choose2):
         print("getlineattr %d" % n)
         if n == 1:
             return [0xFF0000, 0]
+
 
 y = MyChoose2("bla bla")
 y.Show()
