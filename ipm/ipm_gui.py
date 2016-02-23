@@ -23,6 +23,9 @@ class MyDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
 
         self.plugin_info = plugin_info
 
+        QtCore.QObject.connect(self.browsePushButton, QtCore.SIGNAL("clicked()"), self.browse)
+
+
         self.nameLineEdit.setText(plugin_info.name)
         self.pathLineEdit.setText(plugin_info.path)
         self.systemCheckBox.setCheckState(checked(plugin_info.system))
@@ -37,10 +40,12 @@ class MyDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
                                       self.userCheckBox.isChecked(),
                                       self.directoryCheckBox.isChecked(),
                                       self.idbCheckBox.isChecked())
-        print 'a'
         write_plugin(self.plugin_info, IDASettings('PluginLoader'))
-        print 'b'
         super(MyDialog, self).accept(*args, **kwargs)
+
+    def browse(self):
+        path, selected_filter = QtWidgets.QFileDialog().getOpenFileName(self, 'Plugin Path', self.pathLineEdit.text(), filter='*.py')
+        self.pathLineEdit.setText(path)
 
 
 a = MyDialog(PluginInfo('name', 'path', True, True, True, True))
