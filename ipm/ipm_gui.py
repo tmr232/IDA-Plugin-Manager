@@ -1,8 +1,18 @@
 import idaapi
 from ida_settings import IDASettings
 import idc
+from cute import QtWidgets, QtGui, QtCore
 
-idc.form()
+import plugin_form
+
+class MyDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
+    def __init__(self):
+        super(MyDialog, self).__init__()
+        self.setupUi(self)
+
+a = MyDialog()
+a.show()
+
 
 class MyChoose2(idaapi.Choose2):
 
