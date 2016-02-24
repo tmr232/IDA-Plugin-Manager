@@ -5,8 +5,8 @@ from ida_settings import IDASettings
 import idc
 from cute import QtWidgets, QtGui, QtCore, connect
 
+idaapi.require('plugin_form')
 import plugin_form
-import main_form
 
 
 class PluginInfo(object):
@@ -99,7 +99,7 @@ class PluginDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
         super(PluginDialog, self).__init__()
         self.setupUi(self)
 
-        QtCore.QObject.connect(self.browsePushButton, QtCore.SIGNAL("clicked()"), self.browse)
+        connect(self.browsePushButton, "clicked()", self.browse)
 
         self.plugin_info = plugin_info
 
@@ -127,12 +127,17 @@ class PluginDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
 
 
 def ask_plugin(plugin_info=None):
-    plugin_dialog = PluginDialog(plugin_info)
-    plugin_dialog.setModal(True)
-    result = plugin_dialog.exec_()
-    if result:
-        return plugin_dialog.plugin_info
-    return None
+    try:
+        plugin_dialog = PluginDialog(plugin_info)
+        plugin_dialog.setModal(True)
+        result = plugin_dialog.exec_()
+        if result:
+            return plugin_dialog.plugin_info
+        return None
+    except:
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def write_plugin(plugin_info, settings):
