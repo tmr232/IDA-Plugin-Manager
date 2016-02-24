@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 import idaapi
 from ida_settings import IDASettings
 import idc
@@ -19,79 +17,27 @@ class PluginInfo(object):
         self.idb = idb
 
     def __repr__(self):
-        return 'PluginInfo(name={}, path={}, system={}, user={}, directory={}, idb={})'.format(self.name,
-                                                                                               self.path,
-                                                                                               self.system,
-                                                                                               self.user,
-                                                                                               self.directory,
-                                                                                               self.idb)
+        return ('PluginInfo(name={},'
+                ' path={},'
+                ' system={},'
+                ' user={},'
+                ' directory={},'
+                ' idb={})').format(self.name,
+                                   self.path,
+                                   self.system,
+                                   self.user,
+                                   self.directory,
+                                   self.idb)
 
     @property
     def has_storage(self):
-        return any((self.system, self.user, self.directory, self.idb, ))
+        return any((self.system, self.user, self.directory, self.idb,))
 
 
 def checked(state):
     if state:
         return QtCore.Qt.Checked
     return QtCore.Qt.Unchecked
-
-
-class PluginTable(QtWidgets.QTableWidget):
-    def __init__(self, *args, **kwargs):
-        super(PluginTable, self).__init__(*args, **kwargs)
-
-        self.setColumnCount(6)
-        self.setHorizontalHeaderLabels(['Name', 'Path', 'System', 'User', 'Directory', 'IDB'])
-
-    def add_row(self, plugin_info):
-        row_index = self.rowCount()
-        self.insertRow(row_index)
-
-        self.setItem(row_index, 0, QtWidgets.QTableWidgetItem(plugin_info.name))
-        self.setItem(row_index, 1, QtWidgets.QTableWidgetItem(plugin_info.path))
-        self.setCellWidget(row_index, 2, QtWidgets.QCheckBox())
-        self.setCellWidget(row_index, 3, QtWidgets.QCheckBox())
-        self.setCellWidget(row_index, 4, QtWidgets.QCheckBox())
-        self.setCellWidget(row_index, 5, QtWidgets.QCheckBox())
-
-
-class PluginForm(QtWidgets.QWidget):
-    def __init__(self):
-        super(PluginForm, self).__init__()
-
-        self.table = PluginTable(self)
-        self.table.setGeometry(0, 0, 200, 200)
-        self.table.add_row(PluginInfo('Autoshit', 'c:/autoshit', True, True, False, False))
-
-
-# a = PluginTable()
-# a.add_row(PluginInfo('Autoshit', 'c:/autoshit', True, True, False, False))
-# a.show()
-
-
-# class MyMain(QtWidgets.QWidget, main_form.Ui_Form):
-#     def __init__(self):
-#         super(MyMain, self).__init__()
-#         self.setupUi(self)
-#
-#         row = self.tableWidget.rowCount()
-#         self.tableWidget.insertRow(row)
-#         self.tableWidget.setItem(row, 0, QtGui.QTableWidgetItem("wtf"))
-#         self.tableWidget.setCellWidget(row, 1, QtWidgets.QCheckBox())
-#         row = self.tableWidget.rowCount()
-#         self.tableWidget.insertRow(row)
-#         self.tableWidget.setItem(row, 0, QtGui.QTableWidgetItem("wtf"))
-#         self.tableWidget.setHorizontalHeaderLabels(['Name', 'Path', 'System', 'User', 'Directory', 'IDB'])
-#
-#         connect(self.tableWidget, 'cellDoubleClicked(int, int)', self.cellDoubleClicked)
-#
-#     def cellDoubleClicked(self, row, column):
-#         print "AAA"
-#
-#
-# a  = MyMain()
-# a.show()
 
 
 class PluginDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
@@ -149,8 +95,8 @@ def write_plugin(plugin_info, settings):
                 pass
 
 
-class MyChoose2(idaapi.Choose2):
-    def __init__(self, title, nb=5, flags=0, width=None, height=None, embedded=False, modal=False):
+class PluginViewer(idaapi.Choose2):
+    def __init__(self, title='Plugin Manager', nb=5, flags=0, width=None, height=None, embedded=False, modal=False):
         self.settings = IDASettings('PluginLoader')
         idaapi.Choose2.__init__(
             self,
@@ -160,13 +106,7 @@ class MyChoose2(idaapi.Choose2):
             width=width,
             height=height,
             embedded=embedded)
-        self.items = [[str(name),
-                       str(path),
-                       'x' if name in self.settings.system else '',
-                       'x' if name in self.settings.user else '',
-                       'x' if name in self.settings.directory else '',
-                       'x' if name in self.settings.idb else '',
-                       ] for name, path in self.settings.iteritems()]
+        self.items = self.generate_items()
         self.n = len(self.items)
         self.icon = -1
         self.selcount = 0
@@ -174,7 +114,16 @@ class MyChoose2(idaapi.Choose2):
         self.popup_names = ['Add', 'Remove', 'Edit', 'Refresh']
 
     def OnClose(self):
-        print "closed", str(self)
+        pass
+
+    def generate_items(self):
+        return [[str(name),
+                 str(path),
+                 'x' if name in self.settings.system else '',
+                 'x' if name in self.settings.user else '',
+                 'x' if name in self.settings.directory else '',
+                 'x' if name in self.settings.idb else '',
+                 ] for name, path in self.settings.iteritems()]
 
     def OnEditLine(self, n):
         old_info = PluginInfo(*self.items[n])
@@ -215,64 +164,43 @@ class MyChoose2(idaapi.Choose2):
         self.items.append(self.make_line(plugin_info))
 
     def OnSelectLine(self, n):
-        # self.selcount += 1
-        Warning("[%02d] selectline '%s'" % (self.selcount, n))
+        pass
 
     def OnGetLine(self, n):
-        print("getline %d" % n)
         return self.items[n]
 
     def OnGetSize(self):
         n = len(self.items)
-        print("getsize -> %d" % n)
         return n
 
     def OnDeleteLine(self, n):
         plugin_info = PluginInfo(*self.items[n])
         for storage_type in ('system', 'user', 'directory', 'idb'):
-                try:
-                    if getattr(plugin_info, storage_type):
-                        del getattr(self.settings, storage_type)[plugin_info.name]
-                except:
-                    print 'Failed on storage type %s'.format(storage_type)
-        print("del %d " % n)
+            try:
+                if getattr(plugin_info, storage_type):
+                    del getattr(self.settings, storage_type)[plugin_info.name]
+            except:
+                print 'Failed on storage type %s'.format(storage_type)
         del self.items[n]
         return n
 
     def OnRefresh(self, n):
-        print("refresh %d" % n)
-        return n
-
-    def OnCommand(self, n, cmd_id):
-        if cmd_id == self.cmd_a:
-            print "command A selected @", n
-        elif cmd_id == self.cmd_b:
-            print "command B selected @", n
-        else:
-            print "Unknown command:", cmd_id, "@", n
-        return 1
+        self.items = self.generate_items()
+        self.n = len(self.items)
+        return self.n
 
     def OnGetIcon(self, n):
-        r = self.items[n]
-        t = self.icon + r[1].count("*")
-        print "geticon", n, t
-        return t
+        return -1
 
     def show(self):
         t = self.Show(self.modal)
         if t < 0:
             return False
-        if not self.modal:
-            self.cmd_a = self.AddCommand("command A")
-            self.cmd_b = self.AddCommand("command B")
-        print("Show() returned: %d\n" % t)
         return True
 
     def OnGetLineAttr(self, n):
-        print("getlineattr %d" % n)
-        # if n == 1:
-        #     return [0xFF0000, 0]
+        pass
 
 
-y = MyChoose2("bla bla")
+y = PluginViewer()
 y.Show()

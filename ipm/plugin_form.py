@@ -1,12 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file '.\plugin_form.ui'
-#
-# Created: Tue Feb 23 15:48:52 2016
-#      by: pyside-uic 0.2.15 running on PySide 1.2.2
-#
-# WARNING! All changes made in this file will be lost!
-from cute import QtCore, QtGui, QtWidgets, connect
+﻿from cute import QtCore, QtGui, QtWidgets, connect
 
 
 class Ui_PluginDialog(object):
@@ -61,14 +53,6 @@ class Ui_PluginDialog(object):
         self.buttonBox.setObjectName("buttonBox")
         self.formLayout_3.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.buttonBox)
 
-        self.retranslateUi(PluginDialog)
-        connect(self.buttonBox, "accepted()", PluginDialog.accept)
-        connect(self.buttonBox, "rejected()", PluginDialog.reject)
-
-    def browse(self):
-        pass
-
-    def retranslateUi(self, PluginDialog):
         PluginDialog.setWindowTitle("IDA Plugin Manager")
         self.label.setText("Name")
         self.label_2.setText("Path")
@@ -78,4 +62,10 @@ class Ui_PluginDialog(object):
         self.userCheckBox.setText("User")
         self.directoryCheckBox.setText("Directory")
         self.idbCheckBox.setText("IDB")
+
+        connect(self.buttonBox, "accepted()", PluginDialog.accept)
+        connect(self.buttonBox, "rejected()", PluginDialog.reject)
+
+    def browse(self):
+        pass
 
