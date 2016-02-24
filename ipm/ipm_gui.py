@@ -223,6 +223,13 @@ class MyChoose2(idaapi.Choose2):
         return n
 
     def OnDeleteLine(self, n):
+        plugin_info = PluginInfo(*self.items[n])
+        for storage_type in ('system', 'user', 'directory', 'idb'):
+                try:
+                    if getattr(plugin_info, storage_type):
+                        del getattr(self.settings, storage_type)[plugin_info.name]
+                except:
+                    print 'Failed on storage type %s'.format(storage_type)
         print("del %d " % n)
         del self.items[n]
         return n
