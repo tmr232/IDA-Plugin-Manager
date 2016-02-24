@@ -8,7 +8,28 @@ from cute import QtWidgets, QtGui, QtCore, connect
 import plugin_form
 import main_form
 
-PluginInfo = namedtuple('PluginInfo', 'name path system user directory idb')
+
+class PluginInfo(object):
+    def __init__(self, name, path, system=False, user=False, directory=False, idb=False):
+        self.name = name
+        self.path = path
+        self.system = system
+        self.user = user
+        self.directory = directory
+        self.idb = idb
+
+    def __repr__(self):
+        return 'PluginInfo(name={}, path={}, system={}, user={}, directory={}, idb={})'.format(self.name,
+                                                                                               self.path,
+                                                                                               self.system,
+                                                                                               self.user,
+                                                                                               self.directory,
+                                                                                               self.idb)
+
+    @property
+    def has_storage(self):
+        return any((self.system, self.user, self.directory, self.idb, ))
+
 
 def checked(state):
     if state:
@@ -34,6 +55,7 @@ class PluginTable(QtWidgets.QTableWidget):
         self.setCellWidget(row_index, 4, QtWidgets.QCheckBox())
         self.setCellWidget(row_index, 5, QtWidgets.QCheckBox())
 
+
 class PluginForm(QtWidgets.QWidget):
     def __init__(self):
         super(PluginForm, self).__init__()
@@ -41,6 +63,7 @@ class PluginForm(QtWidgets.QWidget):
         self.table = PluginTable(self)
         self.table.setGeometry(0, 0, 200, 200)
         self.table.add_row(PluginInfo('Autoshit', 'c:/autoshit', True, True, False, False))
+
 
 # a = PluginTable()
 # a.add_row(PluginInfo('Autoshit', 'c:/autoshit', True, True, False, False))
@@ -76,9 +99,7 @@ class PluginDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
         super(PluginDialog, self).__init__()
         self.setupUi(self)
 
-
         QtCore.QObject.connect(self.browsePushButton, QtCore.SIGNAL("clicked()"), self.browse)
-
 
         self.plugin_info = plugin_info
 
@@ -100,7 +121,8 @@ class PluginDialog(QtWidgets.QDialog, plugin_form.Ui_PluginDialog):
         super(PluginDialog, self).accept(*args, **kwargs)
 
     def browse(self):
-        path, selected_filter = QtWidgets.QFileDialog().getOpenFileName(self, 'Plugin Path', self.pathLineEdit.text(), filter='*.py')
+        path, selected_filter = QtWidgets.QFileDialog().getOpenFileName(self, 'Plugin Path', self.pathLineEdit.text(),
+                                                                        filter='*.py')
         self.pathLineEdit.setText(path)
 
 
@@ -121,3 +143,124 @@ def write_plugin(plugin_info, settings):
             except:
                 pass
 
+
+class MyChoose2(idaapi.Choose2):
+    def __init__(self, title, nb=5, flags=0, width=None, height=None, embedded=False, modal=False):
+        self.settings = IDASettings('PluginLoader')
+        idaapi.Choose2.__init__(
+            self,
+            title,
+            [['Name', 10], ['Path', 50], ['S', 2], ['U', 2], ['D', 2], ['I', 2]],
+            flags=flags,
+            width=width,
+            height=height,
+            embedded=embedded)
+        self.items = [[str(name),
+                       str(path),
+                       'x' if name in self.settings.system else '',
+                       'x' if name in self.settings.user else '',
+                       'x' if name in self.settings.directory else '',
+                       'x' if name in self.settings.idb else '',
+                       ] for name, path in self.settings.iteritems()]
+        self.n = len(self.items)
+        self.icon = -1
+        self.selcount = 0
+        self.modal = modal
+        self.popup_names = ['Add', 'Remove', 'Edit', 'Refresh']
+
+    def OnClose(self):
+        print "closed", str(self)
+
+    def OnEditLine(self, n):
+        old_info = PluginInfo(*self.items[n])
+        new_info = ask_plugin(old_info)
+        print new_info.has_storage
+        if not new_info.has_storage:
+            print 'a'
+            print idc.AskYN(False, 'This will remove the plugin from all storage. Continue?')
+
+        if old_info != new_info:
+            if new_info.name != old_info.name:
+                print 'ignoring name changes for now...'
+
+            for storage_type in ('system', 'user', 'directory', 'idb'):
+                try:
+                    if getattr(new_info, storage_type):
+                        getattr(self.settings, storage_type)[old_info.name] = new_info.path
+                    elif getattr(old_info, storage_type):
+                        del getattr(self.settings, storage_type)[old_info.name]
+                except:
+                    print 'Failed on storage type %s'.format(storage_type)
+
+        self.items[n] = self.make_line(new_info)
+
+    def make_line(self, plugin_info):
+        return [str(plugin_info.name),
+                str(plugin_info.path),
+                'x' if plugin_info.system else '',
+                'x' if plugin_info.user else '',
+                'x' if plugin_info.directory else '',
+                'x' if plugin_info.idb else '',
+                ]
+
+    def OnInsertLine(self):
+        plugin_info = ask_plugin()
+        write_plugin(plugin_info, self.settings)
+        self.n += 1
+        self.items.append(self.make_line(plugin_info))
+
+    def OnSelectLine(self, n):
+        # self.selcount += 1
+        Warning("[%02d] selectline '%s'" % (self.selcount, n))
+
+    def OnGetLine(self, n):
+        print("getline %d" % n)
+        return self.items[n]
+
+    def OnGetSize(self):
+        n = len(self.items)
+        print("getsize -> %d" % n)
+        return n
+
+    def OnDeleteLine(self, n):
+        print("del %d " % n)
+        del self.items[n]
+        return n
+
+    def OnRefresh(self, n):
+        print("refresh %d" % n)
+        return n
+
+    def OnCommand(self, n, cmd_id):
+        if cmd_id == self.cmd_a:
+            print "command A selected @", n
+        elif cmd_id == self.cmd_b:
+            print "command B selected @", n
+        else:
+            print "Unknown command:", cmd_id, "@", n
+        return 1
+
+    def OnGetIcon(self, n):
+        r = self.items[n]
+        t = self.icon + r[1].count("*")
+        print "geticon", n, t
+        return t
+
+    def show(self):
+        t = self.Show(self.modal)
+        if t < 0:
+            return False
+        if not self.modal:
+            self.cmd_a = self.AddCommand("command A")
+            self.cmd_b = self.AddCommand("command B")
+        print("Show() returned: %d\n" % t)
+        return True
+
+    def OnGetLineAttr(self, n):
+        print("getlineattr %d" % n)
+        # if n == 1:
+        #     return [0xFF0000, 0]
+
+
+y = MyChoose2("bla bla")
+y.Show()
